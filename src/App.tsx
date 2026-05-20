@@ -96,10 +96,10 @@ const marketGroupLabels: Record<string, string> = {
   TEAM_GOALS_1_PLUS: 'Goles de Bilawal',
   TEAM_GOALS_2_PLUS: 'Goles de Bilawal',
   TEAM_GOALS_3_PLUS: 'Goles de Bilawal',
-  PLAYER_GOAL: 'Jugador anota',
-  PLAYER_ASSIST: 'Jugador asiste',
-  PLAYER_GOAL_OR_ASSIST: 'Jugador anota o asiste',
-  PLAYER_CARD: 'Jugador recibe tarjeta',
+  PLAYER_GOAL: 'Jugador - Anotará',
+  PLAYER_ASSIST: 'Jugador - Asistirá',
+  PLAYER_GOAL_OR_ASSIST: 'Jugador - Anotará o asistirá',
+  PLAYER_CARD: 'Jugador - Tarjeta',
 }
 
 function normalizeUsername(value: string) {
@@ -153,6 +153,7 @@ function App() {
   const [playerName, setPlayerName] = useState('')
   const [playerPosition, setPlayerPosition] = useState<Player['position']>('medio')
 
+  const [selectedTeamId, setSelectedTeamId] = useState('')
   const [teamForm, setTeamForm] = useState({
     name: '',
     played: 0,
@@ -169,6 +170,7 @@ function App() {
   const [availablePlayerIds, setAvailablePlayerIds] = useState<string[]>([])
 
   const [betSlip, setBetSlip] = useState<Record<string, number>>({})
+  const [openMarketGroups, setOpenMarketGroups] = useState<Record<string, boolean>>({})
   const [exactBilawal, setExactBilawal] = useState('')
   const [exactRival, setExactRival] = useState('')
 
@@ -477,31 +479,71 @@ function App() {
     await loadData()
   }
 
+  function selectLeagueTeam(teamId: string) {
+    setSelectedTeamId(teamId)
+
+    if (!teamId) {
+      setTeamForm({
+        name: '',
+        played: 0,
+        won: 0,
+        drawn: 0,
+        lost: 0,
+        goals_for: 0,
+        goals_against: 0,
+        points: 0,
+      })
+      return
+    }
+
+    const team = leagueTeams.find((item) => item.id === teamId)
+
+    if (!team) return
+
+    setTeamForm({
+      name: team.name,
+      played: team.played,
+      won: team.won,
+      drawn: team.drawn,
+      lost: team.lost,
+      goals_for: team.goals_for,
+      goals_against: team.goals_against,
+      points: team.points,
+    })
+  }
+
   async function saveLeagueTeam() {
     if (!teamForm.name.trim()) {
       alert('Nombre de equipo obligatorio.')
       return
     }
 
-    const { error } = await supabase.from('league_teams').upsert(
-      {
-        name: teamForm.name.trim(),
-        played: Number(teamForm.played || 0),
-        won: Number(teamForm.won || 0),
-        drawn: Number(teamForm.drawn || 0),
-        lost: Number(teamForm.lost || 0),
-        goals_for: Number(teamForm.goals_for || 0),
-        goals_against: Number(teamForm.goals_against || 0),
-        points: Number(teamForm.points || 0),
-      },
-      { onConflict: 'name' },
-    )
+    const payload = {
+      name: teamForm.name.trim(),
+      played: Number(teamForm.played || 0),
+      won: Number(teamForm.won || 0),
+      drawn: Number(teamForm.drawn || 0),
+      lost: Number(teamForm.lost || 0),
+      goals_for: Number(teamForm.goals_for || 0),
+      goals_against: Number(teamForm.goals_against || 0),
+      points: Number(teamForm.points || 0),
+    }
+
+    const { error } = selectedTeamId
+      ? await supabase
+          .from('league_teams')
+          .update(payload)
+          .eq('id', selectedTeamId)
+      : await supabase
+          .from('league_teams')
+          .upsert(payload, { onConflict: 'name' })
 
     if (error) {
       alert(error.message)
       return
     }
 
+    setSelectedTeamId('')
     setTeamForm({
       name: '',
       played: 0,
@@ -654,6 +696,13 @@ function App() {
     }
 
     await loadData()
+  }
+
+  function toggleMarketGroup(groupName: string) {
+    setOpenMarketGroups((current) => ({
+      ...current,
+      [groupName]: !(current[groupName] ?? groupName === 'Resultado del partido'),
+    }))
   }
 
   function addMarketToSlip(market: Market) {
@@ -811,7 +860,7 @@ function App() {
     return (
       <main className="page">
         <section className="card">
-          <h2>BilaBet v2.0</h2>
+          <h2>BilaBet</h2>
           <p>Cargando...</p>
         </section>
       </main>
@@ -828,7 +877,7 @@ function App() {
             alt="Bilawal FC"
           />
 
-          <h1 className="app-title">BilaBet v2.0</h1>
+          <h1 className="app-title">BilaBet</h1>
           <h2>{authMode === 'login' ? 'Entrar' : 'Crear cuenta'}</h2>
 
           <input
@@ -871,13 +920,13 @@ function App() {
     <main className="page">
       {isAdmin && (
         <section className="card admin-card">
-        <img
-          className="admin-logo"
-          src={asset('bilalogo.jpeg')}
-          alt="Bilawal FC"
-        />
+          <img
+            className="admin-logo"
+            src={asset('bilalogo.jpeg')}
+            alt="Bilawal FC"
+          />
 
-        <h2>🛠️ Panel admin</h2>
+          <h2>🛠️ Panel admin</h2>
 
           <div className="admin-section">
             <h3>0. Ronda actual</h3>
@@ -930,85 +979,102 @@ function App() {
             <h3>2. Clasificación liga</h3>
 
             <div className="form-field">
-            <label>Equipo</label>
-            <input
-              value={teamForm.name}
-              onChange={(event) => setTeamForm({ ...teamForm, name: event.target.value })}
-              placeholder="Nombre equipo"
-            />
-          </div>
-
-          <div className="grid-3">
-            <div className="form-field">
-              <label>J</label>
-              <input
-                type="number"
-                value={teamForm.played}
-                onChange={(e) => setTeamForm({ ...teamForm, played: Number(e.target.value) })}
-                placeholder="Partidos jugados"
-              />
+              <label>Seleccionar equipo</label>
+              <select
+                value={selectedTeamId}
+                onChange={(event) => selectLeagueTeam(event.target.value)}
+              >
+                <option value="">(Nuevo equipo)</option>
+                {[...leagueTeams]
+                  .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }))
+                  .map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                    </option>
+                  ))}
+              </select>
             </div>
 
             <div className="form-field">
-              <label>G</label>
+              <label>Equipo</label>
               <input
-                type="number"
-                value={teamForm.won}
-                onChange={(e) => setTeamForm({ ...teamForm, won: Number(e.target.value) })}
-                placeholder="Ganados"
+                value={teamForm.name}
+                onChange={(event) => setTeamForm({ ...teamForm, name: event.target.value })}
+                placeholder="Nombre equipo"
               />
+            </div>
+
+            <div className="grid-3">
+              <div className="form-field">
+                <label>J</label>
+                <input
+                  type="number"
+                  value={teamForm.played}
+                  onChange={(e) => setTeamForm({ ...teamForm, played: Number(e.target.value) })}
+                  placeholder="Partidos jugados"
+                />
+              </div>
+
+              <div className="form-field">
+                <label>G</label>
+                <input
+                  type="number"
+                  value={teamForm.won}
+                  onChange={(e) => setTeamForm({ ...teamForm, won: Number(e.target.value) })}
+                  placeholder="Ganados"
+                />
+              </div>
+
+              <div className="form-field">
+                <label>E</label>
+                <input
+                  type="number"
+                  value={teamForm.drawn}
+                  onChange={(e) => setTeamForm({ ...teamForm, drawn: Number(e.target.value) })}
+                  placeholder="Empatados"
+                />
+              </div>
+
+              <div className="form-field">
+                <label>P</label>
+                <input
+                  type="number"
+                  value={teamForm.lost}
+                  onChange={(e) => setTeamForm({ ...teamForm, lost: Number(e.target.value) })}
+                  placeholder="Perdidos"
+                />
+              </div>
+
+              <div className="form-field">
+                <label>GF</label>
+                <input
+                  type="number"
+                  value={teamForm.goals_for}
+                  onChange={(e) => setTeamForm({ ...teamForm, goals_for: Number(e.target.value) })}
+                  placeholder="Goles a favor"
+                />
+              </div>
+
+              <div className="form-field">
+                <label>GC</label>
+                <input
+                  type="number"
+                  value={teamForm.goals_against}
+                  onChange={(e) => setTeamForm({ ...teamForm, goals_against: Number(e.target.value) })}
+                  placeholder="Goles en contra"
+                />
+              </div>
             </div>
 
             <div className="form-field">
-              <label>E</label>
+              <label>Pts</label>
               <input
                 type="number"
-                value={teamForm.drawn}
-                onChange={(e) => setTeamForm({ ...teamForm, drawn: Number(e.target.value) })}
-                placeholder="Empatados"
+                value={teamForm.points}
+                onChange={(event) => setTeamForm({ ...teamForm, points: Number(event.target.value) })}
+                placeholder="Puntos"
               />
             </div>
-
-            <div className="form-field">
-              <label>P</label>
-              <input
-                type="number"
-                value={teamForm.lost}
-                onChange={(e) => setTeamForm({ ...teamForm, lost: Number(e.target.value) })}
-                placeholder="Perdidos"
-              />
-            </div>
-
-            <div className="form-field">
-              <label>GF</label>
-              <input
-                type="number"
-                value={teamForm.goals_for}
-                onChange={(e) => setTeamForm({ ...teamForm, goals_for: Number(e.target.value) })}
-                placeholder="Goles a favor"
-              />
-            </div>
-
-            <div className="form-field">
-              <label>GC</label>
-              <input
-                type="number"
-                value={teamForm.goals_against}
-                onChange={(e) => setTeamForm({ ...teamForm, goals_against: Number(e.target.value) })}
-                placeholder="Goles en contra"
-              />
-            </div>
-          </div>
-
-          <div className="form-field">
-            <label>Pts</label>
-            <input
-              type="number"
-              value={teamForm.points}
-              onChange={(event) => setTeamForm({ ...teamForm, points: Number(event.target.value) })}
-              placeholder="Puntos"
-            />
-          </div>
 
             <button onClick={saveLeagueTeam}>AÑADIR / ACTUALIZAR EQUIPO</button>
           </div>
@@ -1093,7 +1159,7 @@ function App() {
 
                     <div className="mini-actions">
                       <button className="small-btn" onClick={() => updateMarketOdds(market)}>
-                        {market.odds.toFixed(1)}
+                        {Number(market.odds).toFixed(1)}
                       </button>
 
                       <button className="small-btn" onClick={() => toggleMarket(market)}>
@@ -1202,6 +1268,7 @@ function App() {
           src={asset('bilawal-team.jpeg')}
           alt="Bilawal FC"
         />
+
         <div className="top-user">
           <div>
             <h2>@{profile.username}</h2>
@@ -1375,24 +1442,51 @@ function App() {
                 Debes hacer mínimo <b>2 apuestas</b>, máximo <b>3 créditos</b> por apuesta y gastar todos tus créditos.
               </div>
 
-              {Object.entries(groupedMarkets).map(([groupName, groupMarkets]) => (
-                <div className="market-group" key={groupName}>
-                  <h4>{groupName}</h4>
+              {Object.entries(groupedMarkets).map(([groupName, groupMarkets]) => {
+                const isOpen = openMarketGroups[groupName] ?? groupName === 'Resultado del partido'
 
-                  {groupMarkets.map((market) => (
-                    <div className="market-card" key={market.id}>
+                return (
+                  <div className="market-accordion" key={groupName}>
+                    <button
+                      type="button"
+                      className="market-accordion-header"
+                      onClick={() => toggleMarketGroup(groupName)}
+                    >
                       <div>
-                        <b>{market.label}</b>
-                        <span>Cuota {Number(market.odds).toFixed(1)}</span>
+                        <b>{groupName}</b>
+                        <span>{groupMarkets.length} mercados disponibles</span>
                       </div>
 
-                      <button className="small-btn" onClick={() => addMarketToSlip(market)}>
-                        Añadir
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ))}
+                      <span className="accordion-arrow">{isOpen ? '⌃' : '⌄'}</span>
+                    </button>
+
+                    {isOpen && (
+                      <div className="market-accordion-body">
+                        {groupMarkets.map((market) => {
+                          const alreadyAdded = Object.prototype.hasOwnProperty.call(betSlip, market.id)
+
+                          return (
+                            <div className="market-card" key={market.id}>
+                              <div>
+                                <b>{market.label}</b>
+                                <span>Cuota {Number(market.odds).toFixed(1)}</span>
+                              </div>
+
+                              <button
+                                className={`small-btn ${alreadyAdded ? 'added' : ''}`}
+                                disabled={alreadyAdded}
+                                onClick={() => addMarketToSlip(market)}
+                              >
+                                {alreadyAdded ? 'Añadido ✓' : 'Añadir'}
+                              </button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
 
               <div className="bet-slip">
                 <h3>🧾 Tu boleto</h3>

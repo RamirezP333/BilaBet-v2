@@ -595,3 +595,57 @@ td {
   color: white;
   font-weight: 900;
 }
+
+.market-accordion {
+  margin: 10px 0;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid #d1d5db;
+  background: white;
+}
+
+.market-accordion-header {
+  width: 100%;
+  margin: 0;
+  padding: 14px;
+  border-radius: 0;
+  background: #26322f;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+}
+
+.market-accordion-header b {
+  display: block;
+  font-size: 16px;
+}
+
+.market-accordion-header span {
+  display: block;
+  font-size: 12px;
+  color: #d1fae5;
+  margin-top: 3px;
+}
+
+.accordion-arrow {
+  font-size: 24px !important;
+  color: white !important;
+}
+
+.market-accordion-body {
+  padding: 10px;
+  background: #f8fafc;
+}
+
+.small-btn.added {
+  background: #16a34a;
+  color: white;
+  opacity: 1;
+}
+
+.small-btn.added:disabled {
+  opacity: 1;
+  cursor: default;
+}
