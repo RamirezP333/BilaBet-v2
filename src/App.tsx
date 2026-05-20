@@ -176,7 +176,8 @@ function App() {
   const [validateRival, setValidateRival] = useState('')
   const [goalIds, setGoalIds] = useState<string[]>([])
   const [assistIds, setAssistIds] = useState<string[]>([])
-  const [cardIds, setCardIds] = useState<string[]>([])
+  const [yellowCardIds, setYellowCardIds] = useState<string[]>([])
+  const [redCardIds, setRedCardIds] = useState<string[]>([])
 
   const isAdmin = profile?.role === 'admin'
 
@@ -733,7 +734,8 @@ function App() {
       p_rival_goals: rivalGoals,
       p_goal_player_ids: goalIds,
       p_assist_player_ids: assistIds,
-      p_card_player_ids: cardIds,
+      p_yellow_card_player_ids: yellowCardIds,
+      p_red_card_player_ids: redCardIds,
     })
 
     if (error) {
@@ -745,7 +747,8 @@ function App() {
     setValidateRival('')
     setGoalIds([])
     setAssistIds([])
-    setCardIds([])
+    setYellowCardIds([])
+    setRedCardIds([])
     await loadData()
   }
 
@@ -926,27 +929,86 @@ function App() {
           <div className="admin-section">
             <h3>2. Clasificación liga</h3>
 
+            <div className="form-field">
+            <label>Equipo</label>
             <input
               value={teamForm.name}
               onChange={(event) => setTeamForm({ ...teamForm, name: event.target.value })}
-              placeholder="Equipo"
+              placeholder="Nombre equipo"
             />
+          </div>
 
-            <div className="grid-3">
-              <input type="number" value={teamForm.played} onChange={(e) => setTeamForm({ ...teamForm, played: Number(e.target.value) })} placeholder="J" />
-              <input type="number" value={teamForm.won} onChange={(e) => setTeamForm({ ...teamForm, won: Number(e.target.value) })} placeholder="G" />
-              <input type="number" value={teamForm.drawn} onChange={(e) => setTeamForm({ ...teamForm, drawn: Number(e.target.value) })} placeholder="E" />
-              <input type="number" value={teamForm.lost} onChange={(e) => setTeamForm({ ...teamForm, lost: Number(e.target.value) })} placeholder="P" />
-              <input type="number" value={teamForm.goals_for} onChange={(e) => setTeamForm({ ...teamForm, goals_for: Number(e.target.value) })} placeholder="GF" />
-              <input type="number" value={teamForm.goals_against} onChange={(e) => setTeamForm({ ...teamForm, goals_against: Number(e.target.value) })} placeholder="GC" />
+          <div className="grid-3">
+            <div className="form-field">
+              <label>J</label>
+              <input
+                type="number"
+                value={teamForm.played}
+                onChange={(e) => setTeamForm({ ...teamForm, played: Number(e.target.value) })}
+                placeholder="Partidos jugados"
+              />
             </div>
 
+            <div className="form-field">
+              <label>G</label>
+              <input
+                type="number"
+                value={teamForm.won}
+                onChange={(e) => setTeamForm({ ...teamForm, won: Number(e.target.value) })}
+                placeholder="Ganados"
+              />
+            </div>
+
+            <div className="form-field">
+              <label>E</label>
+              <input
+                type="number"
+                value={teamForm.drawn}
+                onChange={(e) => setTeamForm({ ...teamForm, drawn: Number(e.target.value) })}
+                placeholder="Empatados"
+              />
+            </div>
+
+            <div className="form-field">
+              <label>P</label>
+              <input
+                type="number"
+                value={teamForm.lost}
+                onChange={(e) => setTeamForm({ ...teamForm, lost: Number(e.target.value) })}
+                placeholder="Perdidos"
+              />
+            </div>
+
+            <div className="form-field">
+              <label>GF</label>
+              <input
+                type="number"
+                value={teamForm.goals_for}
+                onChange={(e) => setTeamForm({ ...teamForm, goals_for: Number(e.target.value) })}
+                placeholder="Goles a favor"
+              />
+            </div>
+
+            <div className="form-field">
+              <label>GC</label>
+              <input
+                type="number"
+                value={teamForm.goals_against}
+                onChange={(e) => setTeamForm({ ...teamForm, goals_against: Number(e.target.value) })}
+                placeholder="Goles en contra"
+              />
+            </div>
+          </div>
+
+          <div className="form-field">
+            <label>Pts</label>
             <input
               type="number"
               value={teamForm.points}
               onChange={(event) => setTeamForm({ ...teamForm, points: Number(event.target.value) })}
-              placeholder="Pts"
+              placeholder="Puntos"
             />
+          </div>
 
             <button onClick={saveLeagueTeam}>AÑADIR / ACTUALIZAR EQUIPO</button>
           </div>
@@ -1098,14 +1160,28 @@ function App() {
                 ))}
               </div>
 
-              <h4>Tarjetas</h4>
+              <h4>Tarjetas amarillas</h4>
               <div className="checklist">
                 {availablePlayersForCurrentRound.map((player) => (
-                  <label className="check-item" key={`card-${player.id}`}>
+                  <label className="check-item" key={`yellow-${player.id}`}>
                     <input
                       type="checkbox"
-                      checked={cardIds.includes(player.id)}
-                      onChange={() => setCardIds(toggleId(cardIds, player.id))}
+                      checked={yellowCardIds.includes(player.id)}
+                      onChange={() => setYellowCardIds(toggleId(yellowCardIds, player.id))}
+                    />
+                    <span>{player.name}</span>
+                  </label>
+                ))}
+              </div>
+
+              <h4>Tarjetas rojas</h4>
+              <div className="checklist">
+                {availablePlayersForCurrentRound.map((player) => (
+                  <label className="check-item" key={`red-${player.id}`}>
+                    <input
+                      type="checkbox"
+                      checked={redCardIds.includes(player.id)}
+                      onChange={() => setRedCardIds(toggleId(redCardIds, player.id))}
                     />
                     <span>{player.name}</span>
                   </label>
@@ -1213,7 +1289,8 @@ function App() {
                   <th>PJ</th>
                   <th>Gol</th>
                   <th>Asis</th>
-                  <th>Tarj</th>
+                  <th>AM</th>
+                  <th>RO</th>
                 </tr>
               </thead>
 
@@ -1222,7 +1299,8 @@ function App() {
                   const rows = playerStats.filter((s) => s.player_id === player.id)
                   const goals = rows.reduce((acc, row) => acc + Number(row.goals || 0), 0)
                   const assists = rows.reduce((acc, row) => acc + Number(row.assists || 0), 0)
-                  const cards = rows.reduce((acc, row) => acc + Number(row.cards || 0), 0)
+                  const yellowCards = rows.reduce((acc, row) => acc + Number(row.yellow_cards || 0), 0)
+                  const redCards = rows.reduce((acc, row) => acc + Number(row.red_cards || 0), 0)
 
                   return (
                     <tr key={player.id}>
@@ -1231,7 +1309,8 @@ function App() {
                       <td>{rows.length}</td>
                       <td>{goals}</td>
                       <td>{assists}</td>
-                      <td>{cards}</td>
+                      <td><span className="yellow-card">{yellowCards}</span></td>
+                      <td><span className="red-card">{redCards}</span></td>
                     </tr>
                   )
                 })}

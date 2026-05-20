@@ -11,7 +11,9 @@ export type PlayerMatchStat = {
   player_id: string
   goals: number
   assists: number
-  cards: number
+  cards?: number
+  yellow_cards?: number
+  red_cards?: number
 }
 
 export type MarketDraft = {
@@ -96,7 +98,10 @@ function statsForPlayer(playerId: string, stats: PlayerMatchStat[]) {
   const played = rows.length
   const goals = rows.reduce((acc, s) => acc + Number(s.goals || 0), 0)
   const assists = rows.reduce((acc, s) => acc + Number(s.assists || 0), 0)
-  const cards = rows.reduce((acc, s) => acc + Number(s.cards || 0), 0)
+  const cards = rows.reduce(
+  (acc, s) => acc + Number(s.yellow_cards || 0) + Number(s.red_cards || 0),
+    0,
+  )
 
   const sinceLast = (field: 'goals' | 'assists' | 'cards') => {
     if (played === 0) return 99
@@ -104,7 +109,11 @@ function statsForPlayer(playerId: string, stats: PlayerMatchStat[]) {
     let count = 0
 
     for (const row of rows) {
-      if (Number(row[field] || 0) > 0) return count
+      if (field === 'cards') {
+      if (Number(row.yellow_cards || 0) + Number(row.red_cards || 0) > 0) return count
+      } else if (Number(row[field] || 0) > 0) {
+      return count
+      }
       count++
     }
 

@@ -563,3 +563,35 @@ td {
   background: #000;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
 }
+
+.form-field {
+  text-align: left;
+}
+
+.form-field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 900;
+  margin: 8px 0 4px;
+  color: #0f172a;
+}
+
+.yellow-card {
+  display: inline-block;
+  min-width: 22px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: #ffeb3b;
+  color: #111827;
+  font-weight: 900;
+}
+
+.red-card {
+  display: inline-block;
+  min-width: 22px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: #ef4444;
+  color: white;
+  font-weight: 900;
+}
