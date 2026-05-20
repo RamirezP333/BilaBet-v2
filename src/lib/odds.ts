@@ -1,7 +1,10 @@
+export type PlayerPosition = 'portero' | 'defensa' | 'medio' | 'delantero'
+
 export type Player = {
   id: string
   name: string
-  position: 'portero' | 'defensa' | 'medio' | 'delantero'
+  position?: PlayerPosition
+  positions?: PlayerPosition[] | null
   active: boolean
 }
 
@@ -24,28 +27,28 @@ export type MarketDraft = {
   sort_order: number
 }
 
-const goalPositionFactor: Record<string, number> = {
+const goalPositionFactor: Record<PlayerPosition, number> = {
   delantero: 0.8,
   medio: 1,
   defensa: 1.35,
   portero: 2.4,
 }
 
-const assistPositionFactor: Record<string, number> = {
+const assistPositionFactor: Record<PlayerPosition, number> = {
   delantero: 1.05,
   medio: 0.9,
   defensa: 1.2,
   portero: 2.5,
 }
 
-const goalOrAssistPositionFactor: Record<string, number> = {
+const goalOrAssistPositionFactor: Record<PlayerPosition, number> = {
   delantero: 0.85,
   medio: 0.9,
   defensa: 1.25,
   portero: 2.4,
 }
 
-const cardPositionFactor: Record<string, number> = {
+const cardPositionFactor: Record<PlayerPosition, number> = {
   delantero: 1.15,
   medio: 1,
   defensa: 0.85,
@@ -58,6 +61,28 @@ function clamp(value: number, min: number, max: number) {
 
 function oneDecimal(value: number) {
   return Math.round(value * 10) / 10
+}
+
+function getPlayerPositions(player: Player): PlayerPosition[] {
+  if (player.positions && player.positions.length > 0) {
+    return player.positions
+  }
+
+  if (player.position) {
+    return [player.position]
+  }
+
+  return ['medio']
+}
+
+function averagePositionFactor(
+  player: Player,
+  factors: Record<PlayerPosition, number>,
+) {
+  const positions = getPlayerPositions(player)
+  const total = positions.reduce((acc, position) => acc + factors[position], 0)
+
+  return total / positions.length
 }
 
 function positiveRateFactor(rate: number, played: number) {
@@ -99,7 +124,7 @@ function statsForPlayer(playerId: string, stats: PlayerMatchStat[]) {
   const goals = rows.reduce((acc, s) => acc + Number(s.goals || 0), 0)
   const assists = rows.reduce((acc, s) => acc + Number(s.assists || 0), 0)
   const cards = rows.reduce(
-  (acc, s) => acc + Number(s.yellow_cards || 0) + Number(s.red_cards || 0),
+    (acc, s) => acc + Number(s.yellow_cards || 0) + Number(s.red_cards || 0),
     0,
   )
 
@@ -110,10 +135,11 @@ function statsForPlayer(playerId: string, stats: PlayerMatchStat[]) {
 
     for (const row of rows) {
       if (field === 'cards') {
-      if (Number(row.yellow_cards || 0) + Number(row.red_cards || 0) > 0) return count
+        if (Number(row.yellow_cards || 0) + Number(row.red_cards || 0) > 0) return count
       } else if (Number(row[field] || 0) > 0) {
-      return count
+        return count
       }
+
       count++
     }
 
@@ -137,9 +163,10 @@ function statsForPlayer(playerId: string, stats: PlayerMatchStat[]) {
 
 function calcGoalOdds(player: Player, stats: PlayerMatchStat[]) {
   const s = statsForPlayer(player.id, stats)
+
   const raw =
     2.6 *
-    goalPositionFactor[player.position] *
+    averagePositionFactor(player, goalPositionFactor) *
     positiveRateFactor(s.goalRate, s.played) *
     droughtFactor(s.sinceGoal, s.played)
 
@@ -148,9 +175,10 @@ function calcGoalOdds(player: Player, stats: PlayerMatchStat[]) {
 
 function calcAssistOdds(player: Player, stats: PlayerMatchStat[]) {
   const s = statsForPlayer(player.id, stats)
+
   const raw =
     3 *
-    assistPositionFactor[player.position] *
+    averagePositionFactor(player, assistPositionFactor) *
     positiveRateFactor(s.assistRate, s.played) *
     droughtFactor(s.sinceAssist, s.played)
 
@@ -163,7 +191,7 @@ function calcGoalOrAssistOdds(player: Player, stats: PlayerMatchStat[]) {
 
   const raw =
     2.1 *
-    goalOrAssistPositionFactor[player.position] *
+    averagePositionFactor(player, goalOrAssistPositionFactor) *
     positiveRateFactor(s.goalOrAssistRate, s.played) *
     droughtFactor(drought, s.played)
 
@@ -172,9 +200,10 @@ function calcGoalOrAssistOdds(player: Player, stats: PlayerMatchStat[]) {
 
 function calcCardOdds(player: Player, stats: PlayerMatchStat[]) {
   const s = statsForPlayer(player.id, stats)
+
   const raw =
     2.8 *
-    cardPositionFactor[player.position] *
+    averagePositionFactor(player, cardPositionFactor) *
     cardRateFactor(s.cardRate, s.played) *
     droughtFactor(s.sinceCard, s.played)
 

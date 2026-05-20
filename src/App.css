@@ -649,3 +649,35 @@ td {
   opacity: 1;
   cursor: default;
 }
+
+.position-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.position-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 2px solid #cbd5e1;
+  background: white;
+  color: #0f172a;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.position-chip input {
+  width: auto;
+  margin: 0;
+}
+
+.position-chip.selected {
+  background: #dcfce7;
+  border-color: #004d3d;
+  color: #004d3d;
+}

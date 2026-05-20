@@ -5,6 +5,7 @@ import {
   generateMarketsForRound,
   type Player,
   type PlayerMatchStat,
+  type PlayerPosition,
 } from './lib/odds'
 
 const asset = (path: string) => `${import.meta.env.BASE_URL}${path}`
@@ -83,7 +84,7 @@ type RoundPlayer = {
   player_id: string
 }
 
-const positionLabels: Record<string, string> = {
+const positionLabels: Record<PlayerPosition, string> = {
   portero: 'Portero',
   defensa: 'Defensa',
   medio: 'Medio',
@@ -100,6 +101,16 @@ const marketGroupLabels: Record<string, string> = {
   PLAYER_ASSIST: 'Jugador - Asistirá',
   PLAYER_GOAL_OR_ASSIST: 'Jugador - Anotará o asistirá',
   PLAYER_CARD: 'Jugador - Tarjeta',
+}
+
+function getPlayerPositionsLabel(player: Player) {
+  const positions: PlayerPosition[] = player.positions?.length
+    ? player.positions
+    : player.position
+      ? [player.position]
+      : ['medio']
+
+  return positions.map((position) => positionLabels[position]).join(' / ')
 }
 
 function normalizeUsername(value: string) {
@@ -151,7 +162,7 @@ function App() {
   const [playerStats, setPlayerStats] = useState<PlayerMatchStat[]>([])
 
   const [playerName, setPlayerName] = useState('')
-  const [playerPosition, setPlayerPosition] = useState<Player['position']>('medio')
+  const [playerPositions, setPlayerPositions] = useState<PlayerPosition[]>(['medio'])
 
   const [selectedTeamId, setSelectedTeamId] = useState('')
   const [teamForm, setTeamForm] = useState({
@@ -454,7 +465,8 @@ function App() {
     const { error } = await supabase.from('players').upsert(
       {
         name,
-        position: playerPosition,
+        position: playerPositions[0] || 'medio',
+        positions: playerPositions,
         active: true,
       },
       { onConflict: 'name' },
@@ -466,6 +478,7 @@ function App() {
     }
 
     setPlayerName('')
+    setPlayerPositions(['medio'])
     await loadData()
   }
 
@@ -476,6 +489,26 @@ function App() {
       .eq('id', player.id)
 
     if (error) alert(error.message)
+    await loadData()
+  }
+
+  async function deletePlayer(player: Player) {
+    const ok = confirm(
+      `¿Eliminar a "${player.name}"?\n\nEsto también eliminará sus estadísticas históricas y lo quitará de las rondas donde estuviera disponible.`,
+    )
+
+    if (!ok) return
+
+    const { error } = await supabase
+      .from('players')
+      .delete()
+      .eq('id', player.id)
+
+    if (error) {
+      alert(error.message)
+      return
+    }
+
     await loadData()
   }
 
@@ -860,7 +893,7 @@ function App() {
     return (
       <main className="page">
         <section className="card">
-          <h2>BilaBet</h2>
+          <h2>BilaBet v2.0</h2>
           <p>Cargando...</p>
         </section>
       </main>
@@ -877,7 +910,7 @@ function App() {
             alt="Bilawal FC"
           />
 
-          <h1 className="app-title">BilaBet</h1>
+          <h1 className="app-title">BilaBet v2.0</h1>
           <h2>{authMode === 'login' ? 'Entrar' : 'Crear cuenta'}</h2>
 
           <input
@@ -949,15 +982,30 @@ function App() {
               placeholder="Nombre jugador"
             />
 
-            <select
-              value={playerPosition}
-              onChange={(event) => setPlayerPosition(event.target.value as Player['position'])}
-            >
-              <option value="portero">Portero</option>
-              <option value="defensa">Defensa</option>
-              <option value="medio">Medio</option>
-              <option value="delantero">Delantero</option>
-            </select>
+            <div className="position-picker">
+              {(['portero', 'defensa', 'medio', 'delantero'] as PlayerPosition[]).map((position) => (
+                <label
+                  key={position}
+                  className={`position-chip ${playerPositions.includes(position) ? 'selected' : ''}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={playerPositions.includes(position)}
+                    onChange={() => {
+                      setPlayerPositions((current) => {
+                        if (current.includes(position)) {
+                          const next = current.filter((item) => item !== position)
+                          return next.length ? next : current
+                        }
+
+                        return [...current, position]
+                      })
+                    }}
+                  />
+                  {positionLabels[position]}
+                </label>
+              ))}
+            </div>
 
             <button onClick={savePlayer}>AÑADIR / ACTUALIZAR JUGADOR</button>
 
@@ -965,11 +1013,18 @@ function App() {
               {players.map((player) => (
                 <div className="mini-row" key={player.id}>
                   <span>
-                    <b>{player.name}</b> · {positionLabels[player.position]}
+                    <b>{player.name}</b> · {getPlayerPositionsLabel(player)}
                   </span>
-                  <button className="small-btn" onClick={() => togglePlayerActive(player)}>
-                    {player.active ? 'Activo' : 'Inactivo'}
-                  </button>
+
+                  <div className="mini-actions">
+                    <button className="small-btn" onClick={() => togglePlayerActive(player)}>
+                      {player.active ? 'Activo' : 'Inactivo'}
+                    </button>
+
+                    <button className="small-btn danger" onClick={() => deletePlayer(player)}>
+                      Eliminar
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1131,7 +1186,7 @@ function App() {
                     checked={availablePlayerIds.includes(player.id)}
                     onChange={() => setAvailablePlayerIds(toggleId(availablePlayerIds, player.id))}
                   />
-                  <span>{player.name} · {positionLabels[player.position]}</span>
+                  <span>{player.name} · {getPlayerPositionsLabel(player)}</span>
                 </label>
               ))}
             </div>
@@ -1372,7 +1427,7 @@ function App() {
                   return (
                     <tr key={player.id}>
                       <td className="team-cell">{player.name}</td>
-                      <td>{positionLabels[player.position]}</td>
+                      <td>{getPlayerPositionsLabel(player)}</td>
                       <td>{rows.length}</td>
                       <td>{goals}</td>
                       <td>{assists}</td>
