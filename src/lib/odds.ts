@@ -64,24 +64,14 @@ function oneDecimal(value: number) {
 }
 
 function getPlayerPositions(player: Player): PlayerPosition[] {
-  if (player.positions && player.positions.length > 0) {
-    return player.positions
-  }
-
-  if (player.position) {
-    return [player.position]
-  }
-
+  if (player.positions && player.positions.length > 0) return player.positions
+  if (player.position) return [player.position]
   return ['medio']
 }
 
-function averagePositionFactor(
-  player: Player,
-  factors: Record<PlayerPosition, number>,
-) {
+function averagePositionFactor(player: Player, factors: Record<PlayerPosition, number>) {
   const positions = getPlayerPositions(player)
   const total = positions.reduce((acc, position) => acc + factors[position], 0)
-
   return total / positions.length
 }
 
@@ -229,25 +219,60 @@ export function generateMarketsForRound(players: Player[], stats: PlayerMatchSta
       sort_order: 2,
     },
     {
-      market_type: 'TEAM_GOALS_1_PLUS',
-      player_id: null,
-      label: 'Bilawal marca 1+ goles',
-      odds: 1.3,
-      sort_order: 3,
-    },
-    {
-      market_type: 'TEAM_GOALS_2_PLUS',
-      player_id: null,
-      label: 'Bilawal marca 2+ goles',
-      odds: 1.8,
-      sort_order: 4,
-    },
-    {
       market_type: 'TEAM_GOALS_3_PLUS',
       player_id: null,
       label: 'Bilawal marca 3+ goles',
-      odds: 2.7,
-      sort_order: 5,
+      odds: 2.4,
+      sort_order: 10,
+    },
+    {
+      market_type: 'TEAM_GOALS_4_PLUS',
+      player_id: null,
+      label: 'Bilawal marca 4+ goles',
+      odds: 3.2,
+      sort_order: 11,
+    },
+    {
+      market_type: 'TEAM_GOALS_5_PLUS',
+      player_id: null,
+      label: 'Bilawal marca 5+ goles',
+      odds: 4.4,
+      sort_order: 12,
+    },
+    {
+      market_type: 'TEAM_GOALS_6_PLUS',
+      player_id: null,
+      label: 'Bilawal marca 6+ goles',
+      odds: 6.0,
+      sort_order: 13,
+    },
+    {
+      market_type: 'TEAM_GOALS_7_PLUS',
+      player_id: null,
+      label: 'Bilawal marca 7+ goles',
+      odds: 8.0,
+      sort_order: 14,
+    },
+    {
+      market_type: 'MATCH_CARDS_1_PLUS',
+      player_id: null,
+      label: 'Bilawal recibe 1+ tarjetas',
+      odds: 1.4,
+      sort_order: 30,
+    },
+    {
+      market_type: 'MATCH_CARDS_2_PLUS',
+      player_id: null,
+      label: 'Bilawal recibe 2+ tarjetas',
+      odds: 2.2,
+      sort_order: 31,
+    },
+    {
+      market_type: 'MATCH_CARDS_3_PLUS',
+      player_id: null,
+      label: 'Bilawal recibe 3+ tarjetas',
+      odds: 3.2,
+      sort_order: 32,
     },
   )
 

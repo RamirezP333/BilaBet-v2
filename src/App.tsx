@@ -84,6 +84,13 @@ type RoundPlayer = {
   player_id: string
 }
 
+type MatchStatInput = {
+  goals: string
+  assists: string
+  yellow_cards: string
+  red_cards: string
+}
+
 const positionLabels: Record<PlayerPosition, string> = {
   portero: 'Portero',
   defensa: 'Defensa',
@@ -94,9 +101,14 @@ const positionLabels: Record<PlayerPosition, string> = {
 const marketGroupLabels: Record<string, string> = {
   RESULT_WIN_DRAW: 'Resultado del partido',
   RESULT_WIN: 'Resultado del partido',
-  TEAM_GOALS_1_PLUS: 'Goles de Bilawal',
-  TEAM_GOALS_2_PLUS: 'Goles de Bilawal',
   TEAM_GOALS_3_PLUS: 'Goles de Bilawal',
+  TEAM_GOALS_4_PLUS: 'Goles de Bilawal',
+  TEAM_GOALS_5_PLUS: 'Goles de Bilawal',
+  TEAM_GOALS_6_PLUS: 'Goles de Bilawal',
+  TEAM_GOALS_7_PLUS: 'Goles de Bilawal',
+  MATCH_CARDS_1_PLUS: 'Tarjetas del partido',
+  MATCH_CARDS_2_PLUS: 'Tarjetas del partido',
+  MATCH_CARDS_3_PLUS: 'Tarjetas del partido',
   PLAYER_GOAL: 'Jugador - Anotará',
   PLAYER_ASSIST: 'Jugador - Asistirá',
   PLAYER_GOAL_OR_ASSIST: 'Jugador - Anotará o asistirá',
@@ -140,6 +152,21 @@ function isRoundClosed(round: Round | null) {
   return Date.now() >= new Date(round.closes_at).getTime()
 }
 
+function emptyMatchStatInput(): MatchStatInput {
+  return {
+    goals: '',
+    assists: '',
+    yellow_cards: '',
+    red_cards: '',
+  }
+}
+
+function parseNonNegativeInt(value: string) {
+  const number = Number(value || 0)
+  if (!Number.isFinite(number) || number < 0) return 0
+  return Math.floor(number)
+}
+
 function App() {
   const [loading, setLoading] = useState(true)
   const [sessionUserId, setSessionUserId] = useState<string | null>(null)
@@ -160,6 +187,8 @@ function App() {
   const [bets, setBets] = useState<Bet[]>([])
   const [exactBet, setExactBet] = useState<ExactScoreBet | null>(null)
   const [playerStats, setPlayerStats] = useState<PlayerMatchStat[]>([])
+
+  const [showAdminPanel, setShowAdminPanel] = useState(false)
 
   const [playerName, setPlayerName] = useState('')
   const [playerPositions, setPlayerPositions] = useState<PlayerPosition[]>(['medio'])
@@ -187,10 +216,7 @@ function App() {
 
   const [validateBilawal, setValidateBilawal] = useState('')
   const [validateRival, setValidateRival] = useState('')
-  const [goalIds, setGoalIds] = useState<string[]>([])
-  const [assistIds, setAssistIds] = useState<string[]>([])
-  const [yellowCardIds, setYellowCardIds] = useState<string[]>([])
-  const [redCardIds, setRedCardIds] = useState<string[]>([])
+  const [matchStatInputs, setMatchStatInputs] = useState<Record<string, MatchStatInput>>({})
 
   const isAdmin = profile?.role === 'admin'
 
@@ -452,6 +478,7 @@ function App() {
     setProfile(null)
     setSessionUserId(null)
     setBetSlip({})
+    setShowAdminPanel(false)
   }
 
   async function savePlayer() {
@@ -760,6 +787,20 @@ function App() {
     }))
   }
 
+  function updateMatchStat(playerId: string, field: keyof MatchStatInput, value: string) {
+    setMatchStatInputs((current) => ({
+      ...current,
+      [playerId]: {
+        ...(current[playerId] || emptyMatchStatInput()),
+        [field]: value,
+      },
+    }))
+  }
+
+  function getMatchStatValue(playerId: string, field: keyof MatchStatInput) {
+    return matchStatInputs[playerId]?.[field] || ''
+  }
+
   async function submitBets() {
     if (!currentRound || !profile) return
 
@@ -810,14 +851,19 @@ function App() {
       return
     }
 
+    const playerStatsPayload = availablePlayersForCurrentRound.map((player) => ({
+      player_id: player.id,
+      goals: parseNonNegativeInt(getMatchStatValue(player.id, 'goals')),
+      assists: parseNonNegativeInt(getMatchStatValue(player.id, 'assists')),
+      yellow_cards: parseNonNegativeInt(getMatchStatValue(player.id, 'yellow_cards')),
+      red_cards: parseNonNegativeInt(getMatchStatValue(player.id, 'red_cards')),
+    }))
+
     const { error } = await supabase.rpc('validate_round', {
       p_round_id: currentRound.id,
       p_bilawal_goals: bilawalGoals,
       p_rival_goals: rivalGoals,
-      p_goal_player_ids: goalIds,
-      p_assist_player_ids: assistIds,
-      p_yellow_card_player_ids: yellowCardIds,
-      p_red_card_player_ids: redCardIds,
+      p_player_stats: playerStatsPayload,
     })
 
     if (error) {
@@ -827,10 +873,7 @@ function App() {
 
     setValidateBilawal('')
     setValidateRival('')
-    setGoalIds([])
-    setAssistIds([])
-    setYellowCardIds([])
-    setRedCardIds([])
+    setMatchStatInputs({})
     await loadData()
   }
 
@@ -893,7 +936,7 @@ function App() {
     return (
       <main className="page">
         <section className="card">
-          <h2>BilaBet v2.0</h2>
+          <h2>BilaBet</h2>
           <p>Cargando...</p>
         </section>
       </main>
@@ -910,7 +953,7 @@ function App() {
             alt="Bilawal FC"
           />
 
-          <h1 className="app-title">BilaBet v2.0</h1>
+          <h1 className="app-title">BilaBet</h1>
           <h2>{authMode === 'login' ? 'Entrar' : 'Crear cuenta'}</h2>
 
           <input
@@ -951,7 +994,7 @@ function App() {
 
   return (
     <main className="page">
-      {isAdmin && (
+      {isAdmin && showAdminPanel && (
         <section className="card admin-card">
           <img
             className="admin-logo"
@@ -1142,7 +1185,6 @@ function App() {
                 <div className="mini-row" key={user.id}>
                   <span>
                     <b>@{user.username}</b> · {formatPoints(user.points)} pts · 🔥 {user.current_streak}
-                    {user.role === 'admin' ? ' · admin' : ''}
                   </span>
 
                   <div className="mini-actions">
@@ -1232,7 +1274,7 @@ function App() {
               <h3>6. Validar partido</h3>
 
               <div className="grid-2">
-                <div>
+                <div className="form-field">
                   <label>Bilawal</label>
                   <input
                     type="number"
@@ -1242,7 +1284,7 @@ function App() {
                   />
                 </div>
 
-                <div>
+                <div className="form-field">
                   <label>{currentRound.rival}</label>
                   <input
                     type="number"
@@ -1253,59 +1295,61 @@ function App() {
                 </div>
               </div>
 
-              <h4>Goleadores</h4>
-              <div className="checklist">
+              <h4>Estadísticas del partido</h4>
+              <div className="match-stats-list">
                 {availablePlayersForCurrentRound.map((player) => (
-                  <label className="check-item" key={`goal-${player.id}`}>
-                    <input
-                      type="checkbox"
-                      checked={goalIds.includes(player.id)}
-                      onChange={() => setGoalIds(toggleId(goalIds, player.id))}
-                    />
-                    <span>{player.name}</span>
-                  </label>
-                ))}
-              </div>
+                  <div className="match-stat-row" key={`stat-${player.id}`}>
+                    <div className="match-stat-name">
+                      <b>{player.name}</b>
+                      <small>{getPlayerPositionsLabel(player)}</small>
+                    </div>
 
-              <h4>Asistentes</h4>
-              <div className="checklist">
-                {availablePlayersForCurrentRound.map((player) => (
-                  <label className="check-item" key={`assist-${player.id}`}>
-                    <input
-                      type="checkbox"
-                      checked={assistIds.includes(player.id)}
-                      onChange={() => setAssistIds(toggleId(assistIds, player.id))}
-                    />
-                    <span>{player.name}</span>
-                  </label>
-                ))}
-              </div>
+                    <div className="match-stat-inputs">
+                      <div>
+                        <label>Gol</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={getMatchStatValue(player.id, 'goals')}
+                          onChange={(event) => updateMatchStat(player.id, 'goals', event.target.value)}
+                          placeholder="0"
+                        />
+                      </div>
 
-              <h4>Tarjetas amarillas</h4>
-              <div className="checklist">
-                {availablePlayersForCurrentRound.map((player) => (
-                  <label className="check-item" key={`yellow-${player.id}`}>
-                    <input
-                      type="checkbox"
-                      checked={yellowCardIds.includes(player.id)}
-                      onChange={() => setYellowCardIds(toggleId(yellowCardIds, player.id))}
-                    />
-                    <span>{player.name}</span>
-                  </label>
-                ))}
-              </div>
+                      <div>
+                        <label>Asis</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={getMatchStatValue(player.id, 'assists')}
+                          onChange={(event) => updateMatchStat(player.id, 'assists', event.target.value)}
+                          placeholder="0"
+                        />
+                      </div>
 
-              <h4>Tarjetas rojas</h4>
-              <div className="checklist">
-                {availablePlayersForCurrentRound.map((player) => (
-                  <label className="check-item" key={`red-${player.id}`}>
-                    <input
-                      type="checkbox"
-                      checked={redCardIds.includes(player.id)}
-                      onChange={() => setRedCardIds(toggleId(redCardIds, player.id))}
-                    />
-                    <span>{player.name}</span>
-                  </label>
+                      <div>
+                        <label>AM</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={getMatchStatValue(player.id, 'yellow_cards')}
+                          onChange={(event) => updateMatchStat(player.id, 'yellow_cards', event.target.value)}
+                          placeholder="0"
+                        />
+                      </div>
+
+                      <div>
+                        <label>RO</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={getMatchStatValue(player.id, 'red_cards')}
+                          onChange={(event) => updateMatchStat(player.id, 'red_cards', event.target.value)}
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
 
@@ -1324,10 +1368,18 @@ function App() {
           alt="Bilawal FC"
         />
 
+        {isAdmin && (
+          <button
+            className="admin-toggle-btn"
+            onClick={() => setShowAdminPanel((current) => !current)}
+          >
+            {showAdminPanel ? 'OCULTAR PANEL ADMIN' : 'MOSTRAR PANEL ADMIN'}
+          </button>
+        )}
+
         <div className="top-user">
           <div>
             <h2>@{profile.username}</h2>
-            <span>{profile.role === 'admin' ? 'Admin' : 'Jugador'}</span>
           </div>
 
           <button className="small-btn secondary" onClick={logout}>

@@ -30,6 +30,13 @@ select {
   border-radius: 10px;
   border: 1px solid #cbd5e1;
   font-size: 16px;
+  color: #111827;
+  background: #ffffff;
+}
+
+input::placeholder {
+  color: #64748b;
+  opacity: 1;
 }
 
 button {
@@ -46,25 +53,29 @@ button:active {
 }
 
 button:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
 button.secondary {
   background: #64748b;
+  color: #ffffff;
 }
 
 button.success {
   background: #16a34a;
+  color: #ffffff;
 }
 
 button.warning {
   background: var(--warning);
+  color: #ffffff;
 }
 
 button.danger,
 .small-btn.danger {
   background: var(--danger);
+  color: #ffffff;
 }
 
 .page {
@@ -91,8 +102,48 @@ button.danger,
   text-align: center;
 }
 
+.auth-card h2 {
+  color: #111827;
+  font-weight: 900;
+}
+
+.auth-logo {
+  width: 100%;
+  max-width: 320px;
+  display: block;
+  margin: 0 auto 16px;
+  border-radius: 18px;
+  background: #000;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+}
+
+.app-title {
+  margin: 4px 0 12px;
+  color: var(--primary);
+  font-size: 34px;
+  font-weight: 900;
+  letter-spacing: -1px;
+}
+
 .admin-card {
   border-color: #0f172a;
+}
+
+.admin-logo {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  display: block;
+  margin: 0 auto 12px;
+  border-radius: 24px;
+  background: #000;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+
+.admin-toggle-btn {
+  margin: 0 0 14px;
+  background: #111827;
+  color: white;
 }
 
 .admin-section {
@@ -120,6 +171,18 @@ button.danger,
   gap: 8px;
 }
 
+.form-field {
+  text-align: left;
+}
+
+.form-field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 900;
+  margin: 8px 0 4px;
+  color: #0f172a;
+}
+
 .small-help {
   font-size: 12px;
   color: var(--muted);
@@ -143,6 +206,16 @@ button.danger,
   color: #991b1b;
 }
 
+.team-photo {
+  width: 100%;
+  display: block;
+  border-radius: 18px;
+  margin-bottom: 16px;
+  object-fit: cover;
+  max-height: 280px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.16);
+}
+
 .top-user {
   display: flex;
   justify-content: space-between;
@@ -152,11 +225,8 @@ button.danger,
 
 .top-user h2 {
   margin: 0;
-}
-
-.top-user span {
-  color: var(--muted);
-  font-size: 13px;
+  color: #0f172a;
+  font-weight: 900;
 }
 
 .small-btn {
@@ -166,6 +236,7 @@ button.danger,
   margin: 0;
   border-radius: 10px;
   font-size: 12px;
+  color: #ffffff;
 }
 
 .wallet {
@@ -245,6 +316,7 @@ button.danger,
 
 .credits-box button {
   background: black;
+  color: white;
   margin-top: 12px;
 }
 
@@ -288,15 +360,6 @@ td {
   font-weight: 800;
 }
 
-.market-group {
-  margin: 16px 0;
-}
-
-.market-group h4 {
-  margin: 8px 0;
-  color: var(--primary);
-}
-
 .market-card,
 .ticket-row,
 .slip-row,
@@ -327,6 +390,60 @@ td {
   color: var(--muted);
   font-size: 12px;
   margin-top: 3px;
+}
+
+.market-accordion {
+  margin: 10px 0;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid #d1d5db;
+  background: white;
+}
+
+.market-accordion-header {
+  width: 100%;
+  margin: 0;
+  padding: 14px;
+  border-radius: 0;
+  background: #26322f;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+}
+
+.market-accordion-header b {
+  display: block;
+  font-size: 16px;
+}
+
+.market-accordion-header span {
+  display: block;
+  font-size: 12px;
+  color: #d1fae5;
+  margin-top: 3px;
+}
+
+.accordion-arrow {
+  font-size: 24px !important;
+  color: white !important;
+}
+
+.market-accordion-body {
+  padding: 10px;
+  background: #f8fafc;
+}
+
+.small-btn.added {
+  background: #16a34a;
+  color: white;
+  opacity: 1;
+}
+
+.small-btn.added:disabled {
+  opacity: 1;
+  cursor: default;
 }
 
 .bet-slip {
@@ -507,6 +624,8 @@ td {
   display: flex;
   gap: 6px;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .round-summary {
@@ -523,57 +642,6 @@ td {
 
 .disabled-row {
   opacity: 0.5;
-}
-
-.auth-logo {
-  width: 100%;
-  max-width: 320px;
-  display: block;
-  margin: 0 auto 16px;
-  border-radius: 18px;
-  background: #000;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
-}
-
-.app-title {
-  margin: 4px 0 12px;
-  color: var(--primary);
-  font-size: 34px;
-  font-weight: 900;
-  letter-spacing: -1px;
-}
-
-.team-photo {
-  width: 100%;
-  display: block;
-  border-radius: 18px;
-  margin-bottom: 16px;
-  object-fit: cover;
-  max-height: 280px;
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.16);
-}
-
-.admin-logo {
-  width: 120px;
-  height: 120px;
-  object-fit: cover;
-  display: block;
-  margin: 0 auto 12px;
-  border-radius: 24px;
-  background: #000;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
-}
-
-.form-field {
-  text-align: left;
-}
-
-.form-field label {
-  display: block;
-  font-size: 13px;
-  font-weight: 900;
-  margin: 8px 0 4px;
-  color: #0f172a;
 }
 
 .yellow-card {
@@ -594,60 +662,6 @@ td {
   background: #ef4444;
   color: white;
   font-weight: 900;
-}
-
-.market-accordion {
-  margin: 10px 0;
-  border-radius: 14px;
-  overflow: hidden;
-  border: 1px solid #d1d5db;
-  background: white;
-}
-
-.market-accordion-header {
-  width: 100%;
-  margin: 0;
-  padding: 14px;
-  border-radius: 0;
-  background: #26322f;
-  color: white;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  text-align: left;
-}
-
-.market-accordion-header b {
-  display: block;
-  font-size: 16px;
-}
-
-.market-accordion-header span {
-  display: block;
-  font-size: 12px;
-  color: #d1fae5;
-  margin-top: 3px;
-}
-
-.accordion-arrow {
-  font-size: 24px !important;
-  color: white !important;
-}
-
-.market-accordion-body {
-  padding: 10px;
-  background: #f8fafc;
-}
-
-.small-btn.added {
-  background: #16a34a;
-  color: white;
-  opacity: 1;
-}
-
-.small-btn.added:disabled {
-  opacity: 1;
-  cursor: default;
 }
 
 .position-picker {
@@ -680,4 +694,50 @@ td {
   background: #dcfce7;
   border-color: #004d3d;
   color: #004d3d;
+}
+
+.match-stats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.match-stat-row {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.match-stat-name {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.match-stat-name small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.match-stat-inputs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.match-stat-inputs label {
+  display: block;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.match-stat-inputs input {
+  text-align: center;
+  margin: 4px 0 0;
+  padding: 10px 4px;
 }
