@@ -27,32 +27,96 @@ export type MarketDraft = {
   sort_order: number
 }
 
-const goalPositionFactor: Record<PlayerPosition, number> = {
-  delantero: 0.8,
-  medio: 1,
-  defensa: 1.35,
-  portero: 2.4,
+/**
+ * BilaBet odds model
+ *
+ * The player markets are intentionally more conservative than a real bookmaker:
+ * - no player-stat market can ever be below 1.70
+ * - no player-stat market can ever be above 5.00
+ * - position-specific floors prevent, for example, a goalkeeper goal market
+ *   from becoming unrealistically cheap just because of a tiny sample
+ * - the first matches are smoothed with a positional prior
+ * - season performance and recent form are combined
+ * - drought is used as a gradual adjustment rather than a hard jump
+ *
+ * Team markets keep the existing values because they are not based on
+ * individual player statistics.
+ */
+
+const PLAYER_MIN_ODDS = 1.7
+const PLAYER_MAX_ODDS = 5.0
+const PRIOR_MATCHES = 5
+const HOUSE_FACTOR = 0.94
+const RECENT_MATCHES = 5
+
+const goalPriorRate: Record<PlayerPosition, number> = {
+  portero: 0.03,
+  defensa: 0.10,
+  medio: 0.22,
+  delantero: 0.42,
 }
 
-const assistPositionFactor: Record<PlayerPosition, number> = {
-  delantero: 1.05,
-  medio: 0.9,
-  defensa: 1.2,
-  portero: 2.5,
+const assistPriorRate: Record<PlayerPosition, number> = {
+  portero: 0.03,
+  defensa: 0.14,
+  medio: 0.30,
+  delantero: 0.28,
 }
 
-const goalOrAssistPositionFactor: Record<PlayerPosition, number> = {
-  delantero: 0.85,
-  medio: 0.9,
-  defensa: 1.25,
-  portero: 2.4,
+const cardPriorRate: Record<PlayerPosition, number> = {
+  portero: 0.10,
+  defensa: 0.25,
+  medio: 0.17,
+  delantero: 0.09,
 }
 
-const cardPositionFactor: Record<PlayerPosition, number> = {
-  delantero: 1.15,
-  medio: 1,
-  defensa: 0.85,
-  portero: 1.5,
+/**
+ * Position-specific minimum odds. A player with several positions receives
+ * the average of the corresponding limits.
+ */
+const goalMinOdds: Record<PlayerPosition, number> = {
+  portero: 3.5,
+  defensa: 2.8,
+  medio: 2.1,
+  delantero: 1.7,
+}
+
+const assistMinOdds: Record<PlayerPosition, number> = {
+  portero: 3.8,
+  defensa: 3.0,
+  medio: 2.3,
+  delantero: 2.0,
+}
+
+const goalOrAssistMinOdds: Record<PlayerPosition, number> = {
+  portero: 3.0,
+  defensa: 2.5,
+  medio: 2.0,
+  delantero: 1.7,
+}
+
+const cardMinOdds: Record<PlayerPosition, number> = {
+  portero: 3.5,
+  defensa: 1.9,
+  medio: 2.2,
+  delantero: 2.8,
+}
+
+export function getPlayerMarketMinOdds(player: Player, marketType: string) {
+  const minimums =
+    marketType === 'PLAYER_GOAL'
+      ? goalMinOdds
+      : marketType === 'PLAYER_ASSIST'
+        ? assistMinOdds
+        : marketType === 'PLAYER_GOAL_OR_ASSIST'
+          ? goalOrAssistMinOdds
+          : marketType === 'PLAYER_CARD'
+            ? cardMinOdds
+            : null
+
+  if (!minimums) return PLAYER_MIN_ODDS
+
+  return Math.max(PLAYER_MIN_ODDS, averagePositionValue(player, minimums))
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -69,40 +133,83 @@ function getPlayerPositions(player: Player): PlayerPosition[] {
   return ['medio']
 }
 
-function averagePositionFactor(player: Player, factors: Record<PlayerPosition, number>) {
+function averagePositionValue(
+  player: Player,
+  values: Record<PlayerPosition, number>,
+) {
   const positions = getPlayerPositions(player)
-  const total = positions.reduce((acc, position) => acc + factors[position], 0)
+  const total = positions.reduce((acc, position) => acc + values[position], 0)
   return total / positions.length
 }
 
-function positiveRateFactor(rate: number, played: number) {
-  if (played === 0) return 1.05
-  if (rate >= 1) return 0.75
-  if (rate >= 0.6) return 0.85
-  if (rate >= 0.35) return 0.95
-  if (rate >= 0.15) return 1.05
-  if (rate > 0) return 1.15
-  return 1.3
+function smoothedRate(observedEvents: number, played: number, priorRate: number) {
+  return (observedEvents + priorRate * PRIOR_MATCHES) / (played + PRIOR_MATCHES)
 }
 
-function cardRateFactor(rate: number, played: number) {
-  if (played === 0) return 1.05
-  if (rate >= 0.7) return 0.75
-  if (rate >= 0.45) return 0.85
-  if (rate >= 0.25) return 0.95
-  if (rate >= 0.1) return 1.05
-  if (rate > 0) return 1.15
-  return 1.3
+function weightedRecentRate(rows: PlayerMatchStat[], getValue: (row: PlayerMatchStat) => number) {
+  const recentRows = rows.slice(0, RECENT_MATCHES)
+
+  if (recentRows.length === 0) return null
+
+  let weightedEvents = 0
+  let weightTotal = 0
+
+  recentRows.forEach((row, index) => {
+    const weight = 1 - index * 0.1
+    weightedEvents += Math.max(0, Number(getValue(row) || 0)) * weight
+    weightTotal += weight
+  })
+
+  return weightTotal > 0 ? weightedEvents / weightTotal : 0
 }
 
-function droughtFactor(gamesSinceLast: number, played: number) {
-  if (played === 0) return 1.05
-  if (gamesSinceLast === 0) return 0.85
-  if (gamesSinceLast === 1) return 0.95
-  if (gamesSinceLast === 2) return 1.05
-  if (gamesSinceLast === 3) return 1.15
-  if (gamesSinceLast >= 5) return 1.35
-  return 1.25
+function recentWeight(played: number) {
+  if (played < 5) return 0
+  return Math.min(0.35, 0.15 + (played - 5) * 0.04)
+}
+
+function combineSeasonAndRecent(
+  seasonRate: number,
+  recentRate: number | null,
+  played: number,
+) {
+  if (recentRate === null) return seasonRate
+
+  const weight = recentWeight(played)
+  return seasonRate * (1 - weight) + recentRate * weight
+}
+
+function droughtAdjustment(gamesSinceLast: number, played: number) {
+  if (played === 0) return 1
+
+  if (gamesSinceLast === 0) return 1.10
+  if (gamesSinceLast === 1) return 1.04
+  if (gamesSinceLast === 2) return 1.00
+  if (gamesSinceLast === 3) return 0.96
+  if (gamesSinceLast === 4) return 0.92
+  return 0.88
+}
+
+function eventProbabilityPerMatch(rate: number) {
+  // Poisson-style probability of at least one event.
+  return 1 - Math.exp(-Math.max(0, rate))
+}
+
+function oddsFromProbability(
+  probability: number,
+  minOdds: number,
+) {
+  const safeProbability = clamp(probability, 0.01, 0.95)
+  const fairOdds = 1 / safeProbability
+  const bookmakerOdds = fairOdds * HOUSE_FACTOR
+
+  return oneDecimal(
+    clamp(
+      bookmakerOdds,
+      Math.max(PLAYER_MIN_ODDS, minOdds),
+      PLAYER_MAX_ODDS,
+    ),
+  )
 }
 
 function statsForPlayer(playerId: string, stats: PlayerMatchStat[]) {
@@ -117,6 +224,9 @@ function statsForPlayer(playerId: string, stats: PlayerMatchStat[]) {
     (acc, s) => acc + Number(s.yellow_cards || 0) + Number(s.red_cards || 0),
     0,
   )
+  const goalOrAssistMatches = rows.filter(
+    (s) => Number(s.goals || 0) > 0 || Number(s.assists || 0) > 0,
+  ).length
 
   const sinceLast = (field: 'goals' | 'assists' | 'cards') => {
     if (played === 0) return 99
@@ -136,6 +246,17 @@ function statsForPlayer(playerId: string, stats: PlayerMatchStat[]) {
     return played + 1
   }
 
+  const recentGoals = weightedRecentRate(rows, (row) => Number(row.goals || 0))
+  const recentAssists = weightedRecentRate(rows, (row) => Number(row.assists || 0))
+  const recentCards = weightedRecentRate(
+    rows,
+    (row) => Number(row.yellow_cards || 0) + Number(row.red_cards || 0),
+  )
+  const recentGoalOrAssist = weightedRecentRate(
+    rows,
+    (row) => (Number(row.goals || 0) > 0 || Number(row.assists || 0) > 0 ? 1 : 0),
+  )
+
   return {
     played,
     goals,
@@ -143,64 +264,114 @@ function statsForPlayer(playerId: string, stats: PlayerMatchStat[]) {
     cards,
     goalRate: played ? goals / played : 0,
     assistRate: played ? assists / played : 0,
-    goalOrAssistRate: played ? (goals + assists) / played : 0,
+    goalOrAssistRate: played ? goalOrAssistMatches / played : 0,
     cardRate: played ? cards / played : 0,
+    recentGoalRate: recentGoals,
+    recentAssistRate: recentAssists,
+    recentGoalOrAssistRate: recentGoalOrAssist,
+    recentCardRate: recentCards,
     sinceGoal: sinceLast('goals'),
     sinceAssist: sinceLast('assists'),
     sinceCard: sinceLast('cards'),
   }
 }
 
+function calcPlayerOdds(
+  player: Player,
+  stats: PlayerMatchStat[],
+  priorRates: Record<PlayerPosition, number>,
+  minOddsByPosition: Record<PlayerPosition, number>,
+  recentRate: number | null,
+  seasonRate: number,
+  droughtGames: number,
+) {
+  const priorRate = averagePositionValue(player, priorRates)
+  const minOdds = averagePositionValue(player, minOddsByPosition)
+  const s = statsForPlayer(player.id, stats)
+
+  const smoothedSeasonRate = smoothedRate(
+    seasonRate * s.played,
+    s.played,
+    priorRate,
+  )
+
+  const effectiveRate = combineSeasonAndRecent(
+    smoothedSeasonRate,
+    recentRate,
+    s.played,
+  )
+
+  const adjustedRate = effectiveRate * droughtAdjustment(droughtGames, s.played)
+  const probability = eventProbabilityPerMatch(adjustedRate)
+
+  return oddsFromProbability(probability, minOdds)
+}
+
 function calcGoalOdds(player: Player, stats: PlayerMatchStat[]) {
   const s = statsForPlayer(player.id, stats)
 
-  const raw =
-    2.6 *
-    averagePositionFactor(player, goalPositionFactor) *
-    positiveRateFactor(s.goalRate, s.played) *
-    droughtFactor(s.sinceGoal, s.played)
-
-  return oneDecimal(clamp(raw, 1.2, 8))
+  return calcPlayerOdds(
+    player,
+    stats,
+    goalPriorRate,
+    goalMinOdds,
+    s.recentGoalRate,
+    s.goalRate,
+    s.sinceGoal,
+  )
 }
 
 function calcAssistOdds(player: Player, stats: PlayerMatchStat[]) {
   const s = statsForPlayer(player.id, stats)
 
-  const raw =
-    3 *
-    averagePositionFactor(player, assistPositionFactor) *
-    positiveRateFactor(s.assistRate, s.played) *
-    droughtFactor(s.sinceAssist, s.played)
-
-  return oneDecimal(clamp(raw, 1.2, 8))
+  return calcPlayerOdds(
+    player,
+    stats,
+    assistPriorRate,
+    assistMinOdds,
+    s.recentAssistRate,
+    s.assistRate,
+    s.sinceAssist,
+  )
 }
 
 function calcGoalOrAssistOdds(player: Player, stats: PlayerMatchStat[]) {
   const s = statsForPlayer(player.id, stats)
-  const drought = Math.min(s.sinceGoal, s.sinceAssist)
 
-  const raw =
-    2.1 *
-    averagePositionFactor(player, goalOrAssistPositionFactor) *
-    positiveRateFactor(s.goalOrAssistRate, s.played) *
-    droughtFactor(drought, s.played)
-
-  return oneDecimal(clamp(raw, 1.2, 7))
+  return calcPlayerOdds(
+    player,
+    stats,
+    {
+      portero: goalPriorRate.portero + assistPriorRate.portero,
+      defensa: goalPriorRate.defensa + assistPriorRate.defensa,
+      medio: goalPriorRate.medio + assistPriorRate.medio,
+      delantero: goalPriorRate.delantero + assistPriorRate.delantero,
+    },
+    goalOrAssistMinOdds,
+    s.recentGoalOrAssistRate,
+    s.goalOrAssistRate,
+    Math.min(s.sinceGoal, s.sinceAssist),
+  )
 }
 
 function calcCardOdds(player: Player, stats: PlayerMatchStat[]) {
   const s = statsForPlayer(player.id, stats)
 
-  const raw =
-    2.8 *
-    averagePositionFactor(player, cardPositionFactor) *
-    cardRateFactor(s.cardRate, s.played) *
-    droughtFactor(s.sinceCard, s.played)
-
-  return oneDecimal(clamp(raw, 1.2, 7))
+  return calcPlayerOdds(
+    player,
+    stats,
+    cardPriorRate,
+    cardMinOdds,
+    s.recentCardRate,
+    s.cardRate,
+    s.sinceCard,
+  )
 }
 
-export function generateMarketsForRound(players: Player[], stats: PlayerMatchStat[]): MarketDraft[] {
+export function generateMarketsForRound(
+  players: Player[],
+  stats: PlayerMatchStat[],
+): MarketDraft[] {
   const markets: MarketDraft[] = []
 
   markets.push(
