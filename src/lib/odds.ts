@@ -24,6 +24,8 @@ export type RoundResult = {
   status: 'draft' | 'open' | 'validated'
   bilawal_goals: number | null
   rival_goals: number | null
+  halftime_bilawal_goals: number | null
+  halftime_rival_goals: number | null
 }
 
 export type MarketDraft = {
@@ -118,6 +120,10 @@ const cardMinOdds: Record<PlayerPosition, number> = {
 const TEAM_INITIAL_ODDS = {
   RESULT_WIN: 2.6,
   RESULT_WIN_DRAW: 2.1,
+  BTTS_YES: 1.9,
+  BTTS_NO: 1.8,
+  BTTS_FIRST_HALF_YES: 2.4,
+  BTTS_FIRST_HALF_NO: 1.5,
   TEAM_GOALS_3_PLUS: 2.4,
   TEAM_GOALS_4_PLUS: 3.2,
   TEAM_GOALS_5_PLUS: 4.4,
@@ -512,6 +518,68 @@ function teamGoalsOdds(rounds: RoundResult[], marketType: string) {
   )
 }
 
+
+function scoringProbability(
+  results: RoundResult[],
+  team: 'bilawal' | 'rival',
+  half: 'full' | 'first',
+) {
+  const valid = results.filter((round) => {
+    const goals = half === 'full'
+      ? team === 'bilawal' ? round.bilawal_goals : round.rival_goals
+      : team === 'bilawal' ? round.halftime_bilawal_goals : round.halftime_rival_goals
+    return Number.isFinite(Number(goals))
+  })
+
+  if (valid.length === 0) return null
+
+  const successes = valid.filter((round) => {
+    const goals = half === 'full'
+      ? team === 'bilawal' ? round.bilawal_goals : round.rival_goals
+      : team === 'bilawal' ? round.halftime_bilawal_goals : round.halftime_rival_goals
+    return Number(goals) > 0
+  }).length
+
+  // A small prior prevents the first one or two results from completely
+  // changing the BTTS price. It is intentionally derived from the initial
+  // BTTS probability rather than from an arbitrary team-goal average.
+  const initialProbability = half === 'full'
+    ? (1 / TEAM_INITIAL_ODDS.BTTS_YES) ** 0.5
+    : (1 / TEAM_INITIAL_ODDS.BTTS_FIRST_HALF_YES) ** 0.5
+
+  return smoothedProbability(successes, valid.length, initialProbability)
+}
+
+function bttsProbability(rounds: RoundResult[], half: 'full' | 'first') {
+  const bilawal = scoringProbability(rounds, 'bilawal', half)
+  const rival = scoringProbability(rounds, 'rival', half)
+
+  if (bilawal === null || rival === null) return null
+
+  return clamp(bilawal * rival, 0.01, 0.95)
+}
+
+function bttsOdds(rounds: RoundResult[], marketType: string) {
+  const isFirstHalf = marketType.startsWith('BTTS_FIRST_HALF_')
+  const isYes = marketType.endsWith('_YES')
+  const initialOdds = TEAM_INITIAL_ODDS[marketType as keyof typeof TEAM_INITIAL_ODDS]
+
+  if (initialOdds === undefined) return 2.0
+
+  const probability = bttsProbability(rounds, isFirstHalf ? 'first' : 'full')
+  if (probability === null) return initialOdds
+
+  const yesProbability = probability
+  const currentProbability = isYes ? yesProbability : 1 - yesProbability
+  const initialProbability = 1 / initialOdds
+  const currentFairOdds = 1 / clamp(currentProbability, 0.05, 0.95)
+  const initialFairOdds = 1 / clamp(initialProbability, 0.05, 0.95)
+
+  const dynamicOdds = initialOdds * (currentFairOdds / initialFairOdds)
+
+  return oneDecimal(clamp(dynamicOdds, 1.3, 6.0))
+}
+
 export function generateMarketsForRound(
   players: Player[],
   stats: PlayerMatchStat[],
@@ -533,6 +601,34 @@ export function generateMarketsForRound(
       label: 'Bilawal gana',
       odds: teamResultOdds(rounds, 'RESULT_WIN'),
       sort_order: 2,
+    },
+    {
+      market_type: 'BTTS_YES',
+      player_id: null,
+      label: 'Ambos marcan - Sí',
+      odds: bttsOdds(rounds, 'BTTS_YES'),
+      sort_order: 4,
+    },
+    {
+      market_type: 'BTTS_NO',
+      player_id: null,
+      label: 'Ambos marcan - No',
+      odds: bttsOdds(rounds, 'BTTS_NO'),
+      sort_order: 5,
+    },
+    {
+      market_type: 'BTTS_FIRST_HALF_YES',
+      player_id: null,
+      label: 'Ambos marcan 1ª parte - Sí',
+      odds: bttsOdds(rounds, 'BTTS_FIRST_HALF_YES'),
+      sort_order: 6,
+    },
+    {
+      market_type: 'BTTS_FIRST_HALF_NO',
+      player_id: null,
+      label: 'Ambos marcan 1ª parte - No',
+      odds: bttsOdds(rounds, 'BTTS_FIRST_HALF_NO'),
+      sort_order: 7,
     },
     {
       market_type: 'TEAM_GOALS_3_PLUS',
