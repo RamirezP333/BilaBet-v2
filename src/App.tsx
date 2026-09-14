@@ -32,6 +32,8 @@ type Round = {
   credit_collection_enabled: boolean
   bilawal_goals: number | null
   rival_goals: number | null
+  halftime_bilawal_goals: number | null
+  halftime_rival_goals: number | null
 }
 
 type Market = {
@@ -102,6 +104,10 @@ const positionLabels: Record<PlayerPosition, string> = {
 const marketGroupLabels: Record<string, string> = {
   RESULT_WIN_DRAW: 'Resultado del partido',
   RESULT_WIN: 'Resultado del partido',
+  BTTS_YES: 'Ambos marcan - Partido completo',
+  BTTS_NO: 'Ambos marcan - Partido completo',
+  BTTS_FIRST_HALF_YES: 'Ambos marcan - 1ª parte',
+  BTTS_FIRST_HALF_NO: 'Ambos marcan - 1ª parte',
   TEAM_GOALS_3_PLUS: 'Goles de Bilawal',
   TEAM_GOALS_4_PLUS: 'Goles de Bilawal',
   TEAM_GOALS_5_PLUS: 'Goles de Bilawal',
@@ -217,6 +223,8 @@ function App() {
 
   const [validateBilawal, setValidateBilawal] = useState('')
   const [validateRival, setValidateRival] = useState('')
+  const [validateHalftimeBilawal, setValidateHalftimeBilawal] = useState('')
+  const [validateHalftimeRival, setValidateHalftimeRival] = useState('')
   const [matchStatInputs, setMatchStatInputs] = useState<Record<string, MatchStatInput>>({})
 
   const isAdmin = profile?.role === 'admin'
@@ -861,9 +869,28 @@ function App() {
 
     const bilawalGoals = Number(validateBilawal)
     const rivalGoals = Number(validateRival)
+    const halftimeBilawalGoals = Number(validateHalftimeBilawal)
+    const halftimeRivalGoals = Number(validateHalftimeRival)
 
-    if (!Number.isInteger(bilawalGoals) || !Number.isInteger(rivalGoals)) {
-      alert('Introduce el resultado final.')
+    if (
+      !Number.isInteger(bilawalGoals) ||
+      !Number.isInteger(rivalGoals) ||
+      !Number.isInteger(halftimeBilawalGoals) ||
+      !Number.isInteger(halftimeRivalGoals)
+    ) {
+      alert('Introduce el resultado final y el resultado de la primera parte.')
+      return
+    }
+
+    if (
+      bilawalGoals < 0 ||
+      rivalGoals < 0 ||
+      halftimeBilawalGoals < 0 ||
+      halftimeRivalGoals < 0 ||
+      halftimeBilawalGoals > bilawalGoals ||
+      halftimeRivalGoals > rivalGoals
+    ) {
+      alert('El resultado de la primera parte no puede superar el resultado final ni tener goles negativos.')
       return
     }
 
@@ -879,6 +906,8 @@ function App() {
       p_round_id: currentRound.id,
       p_bilawal_goals: bilawalGoals,
       p_rival_goals: rivalGoals,
+      p_halftime_bilawal_goals: halftimeBilawalGoals,
+      p_halftime_rival_goals: halftimeRivalGoals,
       p_player_stats: playerStatsPayload,
     })
 
@@ -889,6 +918,8 @@ function App() {
 
     setValidateBilawal('')
     setValidateRival('')
+    setValidateHalftimeBilawal('')
+    setValidateHalftimeRival('')
     setMatchStatInputs({})
     await loadData()
   }
@@ -1291,9 +1322,10 @@ function App() {
 
               <div className="grid-2">
                 <div className="form-field">
-                  <label>Bilawal</label>
+                  <label>Bilawal · resultado final</label>
                   <input
                     type="number"
+                    min={0}
                     value={validateBilawal}
                     onChange={(event) => setValidateBilawal(event.target.value)}
                     placeholder="0"
@@ -1301,11 +1333,34 @@ function App() {
                 </div>
 
                 <div className="form-field">
-                  <label>{currentRound.rival}</label>
+                  <label>{currentRound.rival} · resultado final</label>
                   <input
                     type="number"
+                    min={0}
                     value={validateRival}
                     onChange={(event) => setValidateRival(event.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>Bilawal · 1ª parte</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={validateHalftimeBilawal}
+                    onChange={(event) => setValidateHalftimeBilawal(event.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>{currentRound.rival} · 1ª parte</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={validateHalftimeRival}
+                    onChange={(event) => setValidateHalftimeRival(event.target.value)}
                     placeholder="0"
                   />
                 </div>
