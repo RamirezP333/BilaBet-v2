@@ -3,6 +3,7 @@ import './App.css'
 import { supabase } from './lib/supabaseClient'
 import {
   generateMarketsForRound,
+  getPlayerMarketMinOdds,
   type Player,
   type PlayerMatchStat,
   type PlayerPosition,
@@ -716,8 +717,23 @@ function App() {
 
     const odds = Number(value.replace(',', '.'))
 
-    if (!Number.isFinite(odds) || odds < 1.1 || odds > 20) {
-      alert('Cuota inválida.')
+    const isPlayerMarket = market.market_type.startsWith('PLAYER_')
+    const player = market.player_id
+      ? players.find((item) => item.id === market.player_id)
+      : null
+    const minOdds = isPlayerMarket && player
+      ? getPlayerMarketMinOdds(player, market.market_type)
+      : isPlayerMarket
+        ? 1.7
+        : 1.1
+    const maxOdds = isPlayerMarket ? 5 : 20
+
+    if (!Number.isFinite(odds) || odds < minOdds || odds > maxOdds) {
+      alert(
+        isPlayerMarket
+          ? `Las cuotas de este mercado deben estar entre ${minOdds.toFixed(1)} y 5.0.`
+          : 'Cuota inválida.',
+      )
       return
     }
 
