@@ -656,7 +656,7 @@ function App() {
       availablePlayerIds.includes(player.id),
     )
 
-    const generatedMarkets = generateMarketsForRound(selectedPlayers, playerStats)
+    const generatedMarkets = generateMarketsForRound(selectedPlayers, playerStats, rounds)
 
     const { error: playersError } = await supabase.from('round_players').insert(
       selectedPlayers.map((player) => ({
