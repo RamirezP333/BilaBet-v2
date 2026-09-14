@@ -63,21 +63,21 @@ const RECENT_MATCHES = 5
 const INITIAL_PLAYER_ODDS: Record<string, Record<PlayerPosition, number>> = {
   PLAYER_GOAL: {
     portero: 5.0,
-    defensa: 4.2,
-    medio: 3.2,
+    defensa: 3.5,
+    medio: 2.8,
     delantero: 2.3,
   },
   PLAYER_ASSIST: {
     portero: 5.0,
-    defensa: 4.0,
-    medio: 3.0,
+    defensa: 3.2,
+    medio: 2.5,
     delantero: 2.5,
   },
   PLAYER_GOAL_OR_ASSIST: {
     portero: 4.5,
-    defensa: 3.5,
-    medio: 2.7,
-    delantero: 2.1,
+    defensa: 2.9,
+    medio: 2.4,
+    delantero: 2.0,
   },
   PLAYER_CARD: {
     portero: 4.0,
