@@ -116,8 +116,8 @@ const cardMinOdds: Record<PlayerPosition, number> = {
 }
 
 const TEAM_INITIAL_ODDS = {
-  RESULT_WIN: 2.0,
-  RESULT_WIN_DRAW: 1.7,
+  RESULT_WIN: 2.6,
+  RESULT_WIN_DRAW: 2.1,
   TEAM_GOALS_3_PLUS: 2.4,
   TEAM_GOALS_4_PLUS: 3.2,
   TEAM_GOALS_5_PLUS: 4.4,
