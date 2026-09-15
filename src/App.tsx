@@ -45,7 +45,7 @@ type Market = {
   odds: number
   is_active: boolean
   manual_odds: boolean
-  status: 'pending' | 'won' | 'lost'
+  status: 'pending' | 'won' | 'lost' | 'void'
   sort_order: number
 }
 
@@ -85,6 +85,7 @@ type LeagueTeam = {
 type RoundPlayer = {
   round_id: string
   player_id: string
+  played_final: boolean
 }
 
 type MatchStatInput = {
@@ -190,6 +191,7 @@ function App() {
   const [rounds, setRounds] = useState<Round[]>([])
   const [currentRound, setCurrentRound] = useState<Round | null>(null)
   const [roundPlayers, setRoundPlayers] = useState<RoundPlayer[]>([])
+  const [finalPlayed, setFinalPlayed] = useState<Record<string, boolean>>({})
   const [markets, setMarkets] = useState<Market[]>([])
   const [bets, setBets] = useState<Bet[]>([])
   const [exactBet, setExactBet] = useState<ExactScoreBet | null>(null)
@@ -381,7 +383,11 @@ function App() {
       ])
 
       setMarkets((marketsRes.data as Market[]) || [])
-      setRoundPlayers((roundPlayersRes.data as RoundPlayer[]) || [])
+      const loadedRoundPlayers = (roundPlayersRes.data as RoundPlayer[]) || []
+      setRoundPlayers(loadedRoundPlayers)
+      setFinalPlayed(
+        Object.fromEntries(loadedRoundPlayers.map((rp) => [rp.player_id, rp.played_final !== false])),
+      )
 
       if (sessionUserId) {
         const [betsRes, exactRes] = await Promise.all([
@@ -670,6 +676,7 @@ function App() {
       selectedPlayers.map((player) => ({
         round_id: newRound.id,
         player_id: player.id,
+        played_final: true,
       })),
     )
 
@@ -896,6 +903,7 @@ function App() {
 
     const playerStatsPayload = availablePlayersForCurrentRound.map((player) => ({
       player_id: player.id,
+      played: finalPlayed[player.id] !== false,
       goals: parseNonNegativeInt(getMatchStatValue(player.id, 'goals')),
       assists: parseNonNegativeInt(getMatchStatValue(player.id, 'assists')),
       yellow_cards: parseNonNegativeInt(getMatchStatValue(player.id, 'yellow_cards')),
@@ -921,6 +929,7 @@ function App() {
     setValidateHalftimeBilawal('')
     setValidateHalftimeRival('')
     setMatchStatInputs({})
+    setFinalPlayed({})
     await loadData()
   }
 
@@ -1366,9 +1375,30 @@ function App() {
                 </div>
               </div>
 
+              <h4>Jugadores que finalmente jugaron</h4>
+              <div className="small-help">
+                Si alguien estaba marcado como disponible pero finalmente no jugó, desmárcalo aquí.
+                Sus apuestas de jugador quedarán anuladas y recibirán tantos puntos como créditos apostaron (cuota @1,00).
+              </div>
+              <div className="checklist">
+                {availablePlayersForCurrentRound.map((player) => (
+                  <label className="check-item" key={`played-${player.id}`}>
+                    <input
+                      type="checkbox"
+                      checked={finalPlayed[player.id] !== false}
+                      onChange={() => setFinalPlayed((current) => ({
+                        ...current,
+                        [player.id]: !(current[player.id] !== false),
+                      }))}
+                    />
+                    <span>{player.name} · {getPlayerPositionsLabel(player)}</span>
+                  </label>
+                ))}
+              </div>
+
               <h4>Estadísticas del partido</h4>
               <div className="match-stats-list">
-                {availablePlayersForCurrentRound.map((player) => (
+                {availablePlayersForCurrentRound.filter((player) => finalPlayed[player.id] !== false).map((player) => (
                   <div className="match-stat-row" key={`stat-${player.id}`}>
                     <div className="match-stat-name">
                       <b>{player.name}</b>
@@ -1566,7 +1596,7 @@ function App() {
 
         {currentRound && bets.length > 0 && (
           <div className="inner-card">
-            <h3>🎟️ TUS APUESTAS</h3>
+            <h3>🎟️ Tu boleto</h3>
 
             {submittedBetMarkets.map(({ bet, market }) => (
               <div className="ticket-row" key={bet.id}>
@@ -1582,7 +1612,9 @@ function App() {
                     ? `${formatPoints(bet.credits * bet.odds_at_bet)} pts posibles`
                     : bet.status === 'won'
                       ? `+${formatPoints(bet.points_won)}`
-                      : 'Fallada'}
+                      : bet.status === 'void'
+                        ? `Anulada · +${formatPoints(bet.points_won)} pts`
+                        : 'Fallada'}
                 </span>
               </div>
             ))}
