@@ -56,7 +56,7 @@ type Bet = {
   market_id: string
   credits: number
   odds_at_bet: number
-  status: 'pending' | 'won' | 'lost'
+  status: 'pending' | 'won' | 'lost' | 'void'
   points_won: number
 }
 
