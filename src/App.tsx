@@ -1699,10 +1699,10 @@ function App() {
               })}
 
               <div className="bet-slip">
-                <h3>🧾 Tu boleto</h3>
+                <h3>🧾 Tus apuestas</h3>
 
                 {Object.keys(betSlip).length === 0 && (
-                  <p className="small-help">Añade mercados para crear tu boleto.</p>
+                  <p className="small-help">Añade mercados para crear tu hoja de apuestas.</p>
                 )}
 
                 {Object.entries(betSlip).map(([marketId, credits]) => {
