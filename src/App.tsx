@@ -85,6 +85,7 @@ type LeagueTeam = {
 type RoundPlayer = {
   round_id: string
   player_id: string
+  betting_available: boolean
   played_final: boolean
 }
 
@@ -236,9 +237,16 @@ function App() {
     [players],
   )
 
-  const availablePlayersForCurrentRound = useMemo(() => {
+  const roundPlayersForCurrentRound = useMemo(() => {
     const ids = new Set(roundPlayers.map((rp) => rp.player_id))
     return players.filter((player) => ids.has(player.id))
+  }, [players, roundPlayers])
+
+  const availablePlayersForCurrentRound = useMemo(() => {
+    const availableIds = new Set(
+      roundPlayers.filter((rp) => rp.betting_available).map((rp) => rp.player_id),
+    )
+    return players.filter((player) => availableIds.has(player.id))
   }, [players, roundPlayers])
 
   const sortedLeague = useMemo(() => {
@@ -673,9 +681,10 @@ function App() {
     const generatedMarkets = generateMarketsForRound(selectedPlayers, playerStats, rounds)
 
     const { error: playersError } = await supabase.from('round_players').insert(
-      selectedPlayers.map((player) => ({
+      activePlayers.map((player) => ({
         round_id: newRound.id,
         player_id: player.id,
+        betting_available: availablePlayerIds.includes(player.id),
         played_final: true,
       })),
     )
@@ -901,7 +910,7 @@ function App() {
       return
     }
 
-    const playerStatsPayload = availablePlayersForCurrentRound.map((player) => ({
+    const playerStatsPayload = roundPlayersForCurrentRound.map((player) => ({
       player_id: player.id,
       played: finalPlayed[player.id] !== false,
       goals: parseNonNegativeInt(getMatchStatValue(player.id, 'goals')),
@@ -1274,7 +1283,7 @@ function App() {
               onChange={(event) => setRoundClose(event.target.value)}
             />
 
-            <div className="small-help">Jugadores disponibles para apostar. Si están marcados, cuentan como que han jugado.</div>
+            <div className="small-help">Marca aquí quién estará disponible para apostar. Esta selección queda fijada al crear la ronda: si un jugador no está marcado, sus mercados no se generan.</div>
 
             <div className="checklist">
               {activePlayers.map((player) => (
@@ -1377,11 +1386,10 @@ function App() {
 
               <h4>Jugadores que finalmente jugaron</h4>
               <div className="small-help">
-                Si alguien estaba marcado como disponible pero finalmente no jugó, desmárcalo aquí.
-                Sus apuestas de jugador quedarán anuladas y recibirán tantos puntos como créditos apostaron (cuota @1,00).
+                Aquí puedes corregir quién jugó realmente. Un jugador que no estaba disponible para apostar puede marcarse como que finalmente jugó para que cuente en sus estadísticas, pero sus mercados no se generan retroactivamente. Si un jugador sí estaba disponible para apostar y finalmente no jugó, sus mercados quedarán anulados y recibirán tantos puntos como créditos apostaron (cuota @1,00).
               </div>
               <div className="checklist">
-                {availablePlayersForCurrentRound.map((player) => (
+                {roundPlayersForCurrentRound.map((player) => (
                   <label className="check-item" key={`played-${player.id}`}>
                     <input
                       type="checkbox"
@@ -1398,7 +1406,7 @@ function App() {
 
               <h4>Estadísticas del partido</h4>
               <div className="match-stats-list">
-                {availablePlayersForCurrentRound.filter((player) => finalPlayed[player.id] !== false).map((player) => (
+                {roundPlayersForCurrentRound.filter((player) => finalPlayed[player.id] !== false).map((player) => (
                   <div className="match-stat-row" key={`stat-${player.id}`}>
                     <div className="match-stat-name">
                       <b>{player.name}</b>
@@ -1612,7 +1620,7 @@ function App() {
                     ? `${formatPoints(bet.credits * bet.odds_at_bet)} pts posibles`
                     : bet.status === 'won'
                       ? `+${formatPoints(bet.points_won)}`
-                      : bet.status === 'void'
+                      : String(bet.status) === 'void'
                         ? `Anulada · +${formatPoints(bet.points_won)} pts`
                         : 'Fallada'}
                 </span>
@@ -1699,10 +1707,10 @@ function App() {
               })}
 
               <div className="bet-slip">
-                <h3>🧾 Tus apuestas</h3>
+                <h3>🧾 Hoja de apuestas</h3>
 
                 {Object.keys(betSlip).length === 0 && (
-                  <p className="small-help">Añade mercados para crear tu hoja de apuestas.</p>
+                  <p className="small-help">Añade mercados para crear tu boleto.</p>
                 )}
 
                 {Object.entries(betSlip).map(([marketId, credits]) => {
