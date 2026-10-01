@@ -1597,7 +1597,7 @@ function App() {
 
         {currentRound && bets.length > 0 && (
           <div className="inner-card">
-            <h3>🎟️ Tu boleto</h3>
+            <h3>🎟️ Tus Apuestas</h3>
 
             {submittedBetMarkets.map(({ bet, market }) => (
               <div className="ticket-row" key={bet.id}>
@@ -1700,7 +1700,7 @@ function App() {
               })}
 
               <div className="bet-slip">
-                <h3>🧾 Tu boleto</h3>
+                <h3>🧾 Hoja de apuestas</h3>
 
                 {Object.keys(betSlip).length === 0 && (
                   <p className="small-help">Añade mercados para crear tu boleto.</p>
