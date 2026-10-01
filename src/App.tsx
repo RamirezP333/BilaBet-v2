@@ -242,13 +242,6 @@ function App() {
     return players.filter((player) => ids.has(player.id))
   }, [players, roundPlayers])
 
-  const availablePlayersForCurrentRound = useMemo(() => {
-    const availableIds = new Set(
-      roundPlayers.filter((rp) => rp.betting_available).map((rp) => rp.player_id),
-    )
-    return players.filter((player) => availableIds.has(player.id))
-  }, [players, roundPlayers])
-
   const sortedLeague = useMemo(() => {
     return [...leagueTeams].sort((a, b) => {
       if (b.points !== a.points) return b.points - a.points
@@ -1604,7 +1597,7 @@ function App() {
 
         {currentRound && bets.length > 0 && (
           <div className="inner-card">
-            <h3>🎟️ Tus Apuestas</h3>
+            <h3>🎟️ Tu boleto</h3>
 
             {submittedBetMarkets.map(({ bet, market }) => (
               <div className="ticket-row" key={bet.id}>
@@ -1707,7 +1700,7 @@ function App() {
               })}
 
               <div className="bet-slip">
-                <h3>🧾 Hoja de apuestas</h3>
+                <h3>🧾 Tu boleto</h3>
 
                 {Object.keys(betSlip).length === 0 && (
                   <p className="small-help">Añade mercados para crear tu boleto.</p>
