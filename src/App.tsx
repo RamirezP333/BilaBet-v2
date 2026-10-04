@@ -959,12 +959,20 @@ function App() {
   async function deleteUser(user: Profile) {
     if (!confirm(`¿Eliminar a @${user.username}?`)) return
 
-    const { error } = await supabase
-      .from('profiles')
-      .delete()
-      .eq('id', user.id)
+    const { data, error } = await supabase.functions.invoke('delete-user', {
+      body: { user_id: user.id },
+    })
 
-    if (error) alert(error.message)
+    if (error) {
+      alert(`No se pudo eliminar a @${user.username}: ${error.message}`)
+      return
+    }
+
+    if (!data?.success) {
+      alert(`No se pudo eliminar a @${user.username}: ${data?.error || 'Error desconocido.'}`)
+      return
+    }
+
     await loadData()
   }
 
