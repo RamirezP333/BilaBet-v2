@@ -34,6 +34,7 @@ type Round = {
   rival_goals: number | null
   halftime_bilawal_goals: number | null
   halftime_rival_goals: number | null
+  match_total_cards: number | null
 }
 
 type Market = {
@@ -115,9 +116,9 @@ const marketGroupLabels: Record<string, string> = {
   TEAM_GOALS_5_PLUS: 'Goles de Bilawal',
   TEAM_GOALS_6_PLUS: 'Goles de Bilawal',
   TEAM_GOALS_7_PLUS: 'Goles de Bilawal',
-  MATCH_CARDS_1_PLUS: 'Tarjetas del partido',
-  MATCH_CARDS_2_PLUS: 'Tarjetas del partido',
-  MATCH_CARDS_3_PLUS: 'Tarjetas del partido',
+  MATCH_CARDS_1_PLUS: 'Tarjetas totales del partido',
+  MATCH_CARDS_2_PLUS: 'Tarjetas totales del partido',
+  MATCH_CARDS_3_PLUS: 'Tarjetas totales del partido',
   PLAYER_GOAL: 'Jugador - Anotará',
   PLAYER_ASSIST: 'Jugador - Asistirá',
   PLAYER_GOAL_OR_ASSIST: 'Jugador - Anotará o asistirá',
@@ -228,6 +229,7 @@ function App() {
   const [validateRival, setValidateRival] = useState('')
   const [validateHalftimeBilawal, setValidateHalftimeBilawal] = useState('')
   const [validateHalftimeRival, setValidateHalftimeRival] = useState('')
+  const [validateMatchTotalCards, setValidateMatchTotalCards] = useState('')
   const [matchStatInputs, setMatchStatInputs] = useState<Record<string, MatchStatInput>>({})
 
   const isAdmin = profile?.role === 'admin'
@@ -880,6 +882,7 @@ function App() {
     const rivalGoals = Number(validateRival)
     const halftimeBilawalGoals = Number(validateHalftimeBilawal)
     const halftimeRivalGoals = Number(validateHalftimeRival)
+    const matchTotalCards = Number(validateMatchTotalCards)
 
     if (
       !Number.isInteger(bilawalGoals) ||
@@ -888,6 +891,15 @@ function App() {
       !Number.isInteger(halftimeRivalGoals)
     ) {
       alert('Introduce el resultado final y el resultado de la primera parte.')
+      return
+    }
+
+    if (
+      validateMatchTotalCards.trim() === '' ||
+      !Number.isInteger(matchTotalCards) ||
+      matchTotalCards < 0
+    ) {
+      alert('Introduce el total de tarjetas del partido (0 o más).')
       return
     }
 
@@ -918,6 +930,7 @@ function App() {
       p_rival_goals: rivalGoals,
       p_halftime_bilawal_goals: halftimeBilawalGoals,
       p_halftime_rival_goals: halftimeRivalGoals,
+      p_match_total_cards: matchTotalCards,
       p_player_stats: playerStatsPayload,
     })
 
@@ -930,6 +943,7 @@ function App() {
     setValidateRival('')
     setValidateHalftimeBilawal('')
     setValidateHalftimeRival('')
+    setValidateMatchTotalCards('')
     setMatchStatInputs({})
     setFinalPlayed({})
     await loadData()
@@ -1385,6 +1399,19 @@ function App() {
                 </div>
               </div>
 
+              <div className="form-field match-total-cards-field">
+                <label>Total tarjetas del partido (Bilawal + {currentRound.rival})</label>
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={validateMatchTotalCards}
+                  onChange={(event) => setValidateMatchTotalCards(event.target.value)}
+                  placeholder="Introduce el total, o 0 si no hubo tarjetas"
+                />
+                <div className="small-help">Cuenta las tarjetas de ambos equipos. Este total se usa para resolver los mercados de tarjetas; las tarjetas individuales de Bilawal siguen registrándose en las estadísticas de cada jugador.</div>
+              </div>
+
               <h4>Jugadores que finalmente jugaron</h4>
               <div className="small-help">
                 Aquí puedes corregir quién jugó realmente. Un jugador que no estaba disponible para apostar puede marcarse como que finalmente jugó para que cuente en sus estadísticas, pero sus mercados no se generan retroactivamente. Si un jugador sí estaba disponible para apostar y finalmente no jugó, sus mercados quedarán anulados y recibirán tantos puntos como créditos apostaron (cuota @1,00).
@@ -1711,7 +1738,7 @@ function App() {
                 <h3>🧾 Hoja de apuestas</h3>
 
                 {Object.keys(betSlip).length === 0 && (
-                  <p className="small-help">Añade mercados para crear tu boleto.</p>
+                  <p className="small-help">Añade mercados para crear tu hoja de apuestas.</p>
                 )}
 
                 {Object.entries(betSlip).map(([marketId, credits]) => {
