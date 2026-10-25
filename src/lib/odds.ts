@@ -114,7 +114,7 @@ const cardMinOdds: Record<PlayerPosition, number> = {
   portero: 3.5,
   defensa: 1.9,
   medio: 2.2,
-  delantero: 2.8,
+  delantero: 2.2,
 }
 
 const TEAM_INITIAL_ODDS = {
