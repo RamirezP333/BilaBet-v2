@@ -91,30 +91,30 @@ const INITIAL_PLAYER_ODDS: Record<string, Record<PlayerPosition, number>> = {
 
 const goalMinOdds: Record<PlayerPosition, number> = {
   portero: 3.5,
-  defensa: 2.8,
-  medio: 2.1,
+  defensa: 2.4,
+  medio: 1.9,
   delantero: 1.7,
 }
 
 const assistMinOdds: Record<PlayerPosition, number> = {
   portero: 3.8,
-  defensa: 3.0,
-  medio: 2.3,
-  delantero: 2.0,
+  defensa: 2.5,
+  medio: 1.9,
+  delantero: 1.9,
 }
 
 const goalOrAssistMinOdds: Record<PlayerPosition, number> = {
   portero: 3.0,
   defensa: 2.5,
-  medio: 2.0,
+  medio: 1.9,
   delantero: 1.7,
 }
 
 const cardMinOdds: Record<PlayerPosition, number> = {
-  portero: 3.5,
-  defensa: 1.9,
-  medio: 2.2,
-  delantero: 2.2,
+  portero: 1.8,
+  defensa: 1.8,
+  medio: 1.8,
+  delantero: 1.8,
 }
 
 const TEAM_INITIAL_ODDS = {
@@ -132,7 +132,7 @@ const TEAM_INITIAL_ODDS = {
 } as const
 
 const TEAM_GOALS_MIN_ODDS: Record<string, number> = {
-  TEAM_GOALS_3_PLUS: 1.8,
+  TEAM_GOALS_3_PLUS: 1.5,
   TEAM_GOALS_4_PLUS: 2.2,
   TEAM_GOALS_5_PLUS: 2.8,
   TEAM_GOALS_6_PLUS: 3.5,
